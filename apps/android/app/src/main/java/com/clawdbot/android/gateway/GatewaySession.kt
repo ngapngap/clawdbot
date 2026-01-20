@@ -554,7 +554,7 @@ class GatewaySession(
         ?: endpoint.host.trim()
     if (fallbackHost.isEmpty()) return trimmed.ifBlank { null }
 
-    val fallbackPort = endpoint.canvasPort ?: if (port > 0) port else 18793
+    val fallbackPort = endpoint.canvasPort ?: if (port > 0) port else 18789
     val formattedHost = if (fallbackHost.contains(":")) "[${fallbackHost}]" else fallbackHost
     return "$scheme://$formattedHost:$fallbackPort"
   }
