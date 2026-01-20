@@ -3,14 +3,13 @@ package com.clawdbot.android.gateway
 import android.content.Context
 import android.util.Base64
 import java.io.File
-import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.MessageDigest
 import java.security.Provider
-import java.security.Signature
-import java.security.spec.PKCS8EncodedKeySpec
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters
+import org.bouncycastle.crypto.signers.Ed25519Signer
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 
 @Serializable
@@ -51,16 +50,15 @@ class DeviceIdentityStore(context: Context) {
   fun signPayload(payload: String, identity: DeviceIdentity): String? {
     return try {
       val privateKeyBytes = Base64.decode(identity.privateKeyPkcs8Base64, Base64.DEFAULT)
-      val keySpec = PKCS8EncodedKeySpec(privateKeyBytes)
+      val rawPrivateKey = stripPkcs8Prefix(privateKeyBytes)
 
-      val provider = ensureBcProvider()
-      val keyFactory = KeyFactory.getInstance("Ed25519", provider)
-      val privateKey = keyFactory.generatePrivate(keySpec)
-
-      val signature = Signature.getInstance("Ed25519", provider)
-      signature.initSign(privateKey)
-      signature.update(payload.toByteArray(Charsets.UTF_8))
-      base64UrlEncode(signature.sign())
+      val privateKeyParams = Ed25519PrivateKeyParameters(rawPrivateKey, 0)
+      val signer = Ed25519Signer()
+      signer.init(true, privateKeyParams)
+      val message = payload.toByteArray(Charsets.UTF_8)
+      signer.update(message, 0, message.size)
+      val signature = signer.generateSignature()
+      base64UrlEncode(signature)
     } catch (_: Throwable) {
       null
     }
@@ -140,6 +138,20 @@ class DeviceIdentityStore(context: Context) {
     return spki
   }
 
+  private fun stripPkcs8Prefix(pkcs8: ByteArray): ByteArray {
+    // PKCS8 Ed25519 private key is 48 bytes: 16-byte prefix + 32-byte raw key
+    if (pkcs8.size == ED25519_PKCS8_PREFIX.size + 32 &&
+      pkcs8.copyOfRange(0, ED25519_PKCS8_PREFIX.size).contentEquals(ED25519_PKCS8_PREFIX)
+    ) {
+      return pkcs8.copyOfRange(ED25519_PKCS8_PREFIX.size, pkcs8.size)
+    }
+    // Already raw 32 bytes
+    if (pkcs8.size == 32) {
+      return pkcs8
+    }
+    return pkcs8
+  }
+
   private fun sha256Hex(data: ByteArray): String {
     val digest = MessageDigest.getInstance("SHA-256").digest(data)
     val out = StringBuilder(digest.size * 2)
@@ -154,6 +166,13 @@ class DeviceIdentityStore(context: Context) {
   companion object {
     private val ED25519_SPKI_PREFIX =
       byteArrayOf(0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00)
+
+    // PKCS8 prefix for Ed25519: 302e020100300506032b657004220420
+    private val ED25519_PKCS8_PREFIX =
+      byteArrayOf(
+        0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06,
+        0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20
+      )
   }
 }
 
