@@ -123,7 +123,8 @@ class DeviceIdentityStore(context: Context) {
 
   private fun deriveDeviceId(publicKeyRawBase64: String): String? {
     return try {
-      val raw = Base64.decode(publicKeyRawBase64, Base64.DEFAULT)
+      val decoded = Base64.decode(publicKeyRawBase64, Base64.DEFAULT)
+      val raw = stripSpkiPrefix(decoded)
       sha256Hex(raw)
     } catch (_: Throwable) {
       null
