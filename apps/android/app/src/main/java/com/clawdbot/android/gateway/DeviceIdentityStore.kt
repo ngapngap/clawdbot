@@ -6,11 +6,12 @@ import java.io.File
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.MessageDigest
+import java.security.Provider
 import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.conscrypt.Conscrypt
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 
 @Serializable
 data class DeviceIdentity(
@@ -21,6 +22,12 @@ data class DeviceIdentity(
 )
 
 class DeviceIdentityStore(context: Context) {
+  private fun ensureBcProvider(): Provider {
+    // Use a per-call provider to avoid mutating global provider order.
+    // Some devices/ROMs don't expose Ed25519 via the default JCA providers.
+    return BouncyCastleProvider()
+  }
+
   private val json = Json { ignoreUnknownKeys = true }
   private val identityFile = File(context.filesDir, "clawdbot/identity/device.json")
 
@@ -46,7 +53,7 @@ class DeviceIdentityStore(context: Context) {
       val privateKeyBytes = Base64.decode(identity.privateKeyPkcs8Base64, Base64.DEFAULT)
       val keySpec = PKCS8EncodedKeySpec(privateKeyBytes)
 
-      val provider = Conscrypt.newProvider()
+      val provider = ensureBcProvider()
       val keyFactory = KeyFactory.getInstance("Ed25519", provider)
       val privateKey = keyFactory.generatePrivate(keySpec)
 
@@ -97,7 +104,7 @@ class DeviceIdentityStore(context: Context) {
   }
 
   private fun generate(): DeviceIdentity {
-    val provider = Conscrypt.newProvider()
+    val provider = ensureBcProvider()
     val keyPair = KeyPairGenerator.getInstance("Ed25519", provider).generateKeyPair()
 
     val spki = keyPair.public.encoded
@@ -123,7 +130,7 @@ class DeviceIdentityStore(context: Context) {
   }
 
   private fun stripSpkiPrefix(spki: ByteArray): ByteArray {
-if (spki.size == ED25519_SPKI_PREFIX.size + 32 &&
+    if (spki.size == ED25519_SPKI_PREFIX.size + 32 &&
       spki.copyOfRange(0, ED25519_SPKI_PREFIX.size).contentEquals(ED25519_SPKI_PREFIX)
     ) {
       return spki.copyOfRange(ED25519_SPKI_PREFIX.size, spki.size)
@@ -134,9 +141,7 @@ if (spki.size == ED25519_SPKI_PREFIX.size + 32 &&
   private fun sha256Hex(data: ByteArray): String {
     val digest = MessageDigest.getInstance("SHA-256").digest(data)
     val out = StringBuilder(digest.size * 2)
-    for (byte in digest) {
-      out.append(String.format("%02x", byte))
-    }
+    for (byte in digest) out.append(String.format("%02x", byte))
     return out.toString()
   }
 
@@ -146,8 +151,7 @@ if (spki.size == ED25519_SPKI_PREFIX.size + 32 &&
 
   companion object {
     private val ED25519_SPKI_PREFIX =
-      byteArrayOf(
-        0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
-      )
+      byteArrayOf(0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00)
   }
 }
+
