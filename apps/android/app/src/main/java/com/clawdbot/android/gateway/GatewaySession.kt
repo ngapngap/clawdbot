@@ -339,30 +339,8 @@ class GatewaySession(
         }
 
       val identity = identityStore.loadOrCreate()
-      val signedAtMs = System.currentTimeMillis()
-      val payload =
-        buildDeviceAuthPayload(
-          deviceId = identity.deviceId,
-          clientId = client.id,
-          clientMode = client.mode,
-          role = options.role,
-          scopes = options.scopes,
-          signedAtMs = signedAtMs,
-          token = if (authToken.isNotEmpty()) authToken else null,
-        )
-      val signature = identityStore.signPayload(payload, identity)
-      val publicKey = identityStore.publicKeyBase64Url(identity)
-      val deviceJson =
-        if (!signature.isNullOrBlank() && !publicKey.isNullOrBlank()) {
-          buildJsonObject {
-            put("id", JsonPrimitive(identity.deviceId))
-            put("publicKey", JsonPrimitive(publicKey))
-            put("signature", JsonPrimitive(signature))
-            put("signedAt", JsonPrimitive(signedAtMs))
-          }
-        } else {
-          null
-        }
+      // Skip device signature - rely on token auth only
+      val deviceJson: JsonObject? = null
 
       return buildJsonObject {
         put("minProtocol", JsonPrimitive(GATEWAY_PROTOCOL_VERSION))
