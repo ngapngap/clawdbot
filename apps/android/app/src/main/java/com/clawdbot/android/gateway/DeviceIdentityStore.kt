@@ -123,3 +123,31 @@ class DeviceIdentityStore(context: Context) {
   }
 
   private fun stripSpkiPrefix(spki: ByteArray): ByteArray {
+if (spki.size == ED25519_SPKI_PREFIX.size + 32 &&
+      spki.copyOfRange(0, ED25519_SPKI_PREFIX.size).contentEquals(ED25519_SPKI_PREFIX)
+    ) {
+      return spki.copyOfRange(ED25519_SPKI_PREFIX.size, spki.size)
+    }
+    return spki
+  }
+
+  private fun sha256Hex(data: ByteArray): String {
+    val digest = MessageDigest.getInstance("SHA-256").digest(data)
+    val out = StringBuilder(digest.size * 2)
+    for (byte in digest) {
+      out.append(String.format("%02x", byte))
+    }
+    return out.toString()
+  }
+
+  private fun base64UrlEncode(data: ByteArray): String {
+    return Base64.encodeToString(data, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+  }
+
+  companion object {
+    private val ED25519_SPKI_PREFIX =
+      byteArrayOf(
+        0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
+      )
+  }
+}
