@@ -78,6 +78,7 @@ kotlin {
 }
 
 dependencies {
+  implementation("org.conscrypt:conscrypt-android:2.5.2")
   val composeBom = platform("androidx.compose:compose-bom:2025.12.00")
   implementation(composeBom)
   androidTestImplementation(composeBom)
