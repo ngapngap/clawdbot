@@ -280,6 +280,7 @@ class NodeRuntime(context: Context) {
   val manualHost: StateFlow<String> = prefs.manualHost
   val manualPort: StateFlow<Int> = prefs.manualPort
   val manualTls: StateFlow<Boolean> = prefs.manualTls
+  val gatewayToken: StateFlow<String> = prefs.gatewayToken
   val lastDiscoveredStableId: StateFlow<String> = prefs.lastDiscoveredStableId
   val canvasDebugStatusEnabled: StateFlow<Boolean> = prefs.canvasDebugStatusEnabled
 
@@ -422,6 +423,10 @@ class NodeRuntime(context: Context) {
 
   fun setManualTls(value: Boolean) {
     prefs.setManualTls(value)
+  }
+
+  fun setGatewayToken(value: String) {
+    prefs.saveGatewayToken(value)
   }
 
   fun setCanvasDebugStatusEnabled(value: Boolean) {

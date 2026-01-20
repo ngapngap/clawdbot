@@ -97,6 +97,9 @@ class SecurePrefs(context: Context) {
   private val _talkEnabled = MutableStateFlow(prefs.getBoolean("talk.enabled", false))
   val talkEnabled: StateFlow<Boolean> = _talkEnabled
 
+  private val _gatewayToken = MutableStateFlow(loadGatewayTokenInternal())
+  val gatewayToken: StateFlow<String> = _gatewayToken
+
   fun setLastDiscoveredStableId(value: String) {
     val trimmed = value.trim()
     prefs.edit { putString("gateway.lastDiscoveredStableID", trimmed) }
@@ -156,16 +159,24 @@ class SecurePrefs(context: Context) {
   }
 
   fun loadGatewayToken(): String? {
+    val stored = _gatewayToken.value.trim()
+    if (stored.isNotEmpty()) return stored
+    return null
+  }
+
+  private fun loadGatewayTokenInternal(): String {
     val key = "gateway.token.${_instanceId.value}"
     val stored = prefs.getString(key, null)?.trim()
     if (!stored.isNullOrEmpty()) return stored
     val legacy = prefs.getString("bridge.token.${_instanceId.value}", null)?.trim()
-    return legacy?.takeIf { it.isNotEmpty() }
+    return legacy?.takeIf { it.isNotEmpty() } ?: ""
   }
 
   fun saveGatewayToken(token: String) {
     val key = "gateway.token.${_instanceId.value}"
-    prefs.edit { putString(key, token.trim()) }
+    val trimmed = token.trim()
+    prefs.edit { putString(key, trimmed) }
+    _gatewayToken.value = trimmed
   }
 
   fun loadGatewayPassword(): String? {
