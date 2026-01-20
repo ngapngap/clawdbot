@@ -68,7 +68,8 @@ class DeviceIdentityStore(context: Context) {
 
   fun publicKeyBase64Url(identity: DeviceIdentity): String? {
     return try {
-      val raw = Base64.decode(identity.publicKeyRawBase64, Base64.DEFAULT)
+      val decoded = Base64.decode(identity.publicKeyRawBase64, Base64.DEFAULT)
+      val raw = stripSpkiPrefix(decoded)
       base64UrlEncode(raw)
     } catch (_: Throwable) {
       null
